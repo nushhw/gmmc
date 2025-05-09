@@ -1,31 +1,37 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>GMMC</title>
+  <title>Simulator</title>
   <style>
     body { font-family: monospace; background-color: #111; color: #0f0; padding: 20px; }
     .panel { margin-bottom: 10px; }
     .status { margin-bottom: 20px; white-space: pre-wrap; border: 1px solid #0f0; padding: 10px; }
-    button { padding: 10px; margin: 5px; background: #000; color: #0f0; border: 1px solid #0f0; cursor: pointer; }
+    button, input[type='number'] { padding: 10px; margin: 5px; background: #000; color: #0f0; border: 1px solid #0f0; }
     button:hover { background: #020; }
+    .message { margin-top: 10px; color: #ff0; white-space: pre-wrap; }
   </style>
 </head>
 <body>
-  <h1>Money Simulator</h1>
+  <h1>Simulator</h1>
   <div class="status" id="status"></div>
   <div class="panel">
     <button onclick="roll()">Roll ($10)</button>
-    <button onclick="deposit(10)">Deposit $10</button>
-    <button onclick="withdraw(10)">Withdraw $10</button>
-    <button onclick="invest('gold')">Buy Gold ($50)</button>
-    <button onclick="invest('diamonds')">Buy Diamond ($200)</button>
-    <button onclick="invest('car')">Buy Car ($500)</button>
-    <button onclick="invest('house')">Buy House ($1000)</button>
+    <input id="depositAmt" type="number" placeholder="Deposit amount" min="1">
+    <button onclick="deposit(parseInt(document.getElementById('depositAmt').value))">Deposit</button>
+    <input id="withdrawAmt" type="number" placeholder="Withdraw amount" min="1">
+    <button onclick="withdraw(parseInt(document.getElementById('withdrawAmt').value))">Withdraw</button>
+    <input id="investAmt" type="text" placeholder="gold, diamonds, car, house">
+    <button onclick="invest(document.getElementById('investAmt').value.toLowerCase())">Invest</button>
     <button onclick="resetGame()">Reset Game</button>
   </div>
+  <div class="message" id="message"></div>
 
   <script>
     let current = 100, bank = 0, chance = 60.0, gold = 0, diamonds = 0, car = 0, house = 0;
+
+    function showMessage(msg) {
+      document.getElementById('message').textContent = msg;
+    }
 
     function updateStatus() {
       document.getElementById('status').textContent =
@@ -39,7 +45,7 @@
           bank -= 10;
           current += 10;
         } else {
-          alert("Not enough money to roll!");
+          showMessage("Not enough money to roll!");
           return;
         }
       }
@@ -47,17 +53,17 @@
       let r = Math.floor(Math.random() * 100);
       if (r < chance) {
         if (Math.random() < 0.05) {
-          alert("LUCKY 10x MULTIPLIER!!!");
           current *= 10;
+          showMessage("You WIN the roll!\nLUCKY 10x MULTIPLIER!!!");
         } else {
           current *= 2;
-          alert("You WON! Money doubled.");
+          showMessage("You WIN the roll!\nYour money DOUBLED to $" + current);
         }
         chance = Math.max(5.0, chance - 1.0);
       } else {
         current = 0;
         chance = Math.min(95.0, chance + 0.5);
-        alert("You LOST! Money gone.");
+        showMessage("You LOST the roll. Hand money gone!");
       }
 
       accrueInterest();
@@ -65,29 +71,34 @@
     }
 
     function deposit(amount) {
+      if (!amount || amount <= 0) return showMessage("Enter valid deposit amount.");
       if (current >= amount) {
         current -= amount;
         bank += amount;
+        showMessage("Deposited $" + amount);
         updateStatus();
       } else {
-        alert("Not enough in hand to deposit.");
+        showMessage("Not enough in hand to deposit.");
       }
     }
 
     function withdraw(amount) {
+      if (!amount || amount <= 0) return showMessage("Enter valid withdraw amount.");
       if (bank >= amount) {
         bank -= amount;
         current += amount;
+        showMessage("Withdrew $" + amount);
         updateStatus();
       } else {
-        alert("Not enough in bank to withdraw.");
+        showMessage("Not enough in bank to withdraw.");
       }
     }
 
     function invest(type) {
       let prices = { gold: 50, diamonds: 200, car: 500, house: 1000 };
+      if (!prices[type]) return showMessage("Invalid investment item.");
       if (bank < prices[type]) {
-        alert("Not enough in bank to buy " + type);
+        showMessage("Not enough in bank to buy " + type);
         return;
       }
 
@@ -97,6 +108,7 @@
       if (type === 'car') car++;
       if (type === 'house') house++;
       accrueInterest();
+      showMessage("Bought 1 " + type);
       updateStatus();
     }
 
@@ -110,6 +122,7 @@
       bank = 0;
       chance = 60.0;
       gold = diamonds = car = house = 0;
+      showMessage("Game reset.");
       updateStatus();
     }
 

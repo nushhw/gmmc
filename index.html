@@ -1,31 +1,36 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Money Simulator</title>
+  <title>GMMC Gambling Simulator</title>
   <style>
     body { font-family: monospace; background-color: #111; color: #0f0; padding: 20px; }
-    #output { white-space: pre-wrap; border: 1px solid #0f0; padding: 10px; height: 400px; overflow-y: scroll; margin-bottom: 10px; }
-    input { width: 100%; padding: 8px; background: #000; color: #0f0; border: 1px solid #0f0; }
+    .panel { margin-bottom: 10px; }
+    .status { margin-bottom: 20px; white-space: pre-wrap; border: 1px solid #0f0; padding: 10px; }
+    button { padding: 10px; margin: 5px; background: #000; color: #0f0; border: 1px solid #0f0; cursor: pointer; }
+    button:hover { background: #020; }
   </style>
 </head>
 <body>
   <h1>GMMC Gambling Simulator</h1>
-  <div id="output"></div>
-  <input type="text" id="input" placeholder="Enter command...">
+  <div class="status" id="status"></div>
+  <div class="panel">
+    <button onclick="roll()">Roll ($10)</button>
+    <button onclick="deposit(10)">Deposit $10</button>
+    <button onclick="withdraw(10)">Withdraw $10</button>
+    <button onclick="invest('gold')">Buy Gold ($50)</button>
+    <button onclick="invest('diamonds')">Buy Diamond ($200)</button>
+    <button onclick="invest('car')">Buy Car ($500)</button>
+    <button onclick="invest('house')">Buy House ($1000)</button>
+    <button onclick="resetGame()">Reset Game</button>
+  </div>
 
   <script>
     let current = 100, bank = 0, chance = 60.0, gold = 0, diamonds = 0, car = 0, house = 0;
-    let output = document.getElementById('output');
-    let input = document.getElementById('input');
 
-    function print(msg) {
-      output.textContent += msg + '\n';
-      output.scrollTop = output.scrollHeight;
-    }
-
-    function startGame() {
-      print("You start with $" + current + " in hand.");
-      print("Type /help anytime for help!");
+    function updateStatus() {
+      document.getElementById('status').textContent =
+        `Hand: $${current}\nBank: $${bank}\nWin Chance: ${chance.toFixed(1)}%\n` +
+        `Gold: ${gold}\nDiamonds: ${diamonds}\nCars: ${car}\nHouses: ${house}`;
     }
 
     function roll() {
@@ -33,100 +38,82 @@
         if (bank >= 10) {
           bank -= 10;
           current += 10;
-          print("Auto-took $10 from bank for roll.");
         } else {
-          print("You need at least $10 to roll, and no money left in bank.");
+          alert("Not enough money to roll!");
           return;
         }
       }
 
       let r = Math.floor(Math.random() * 100);
       if (r < chance) {
-        print("You WIN the roll!");
         if (Math.random() < 0.05) {
-          print("LUCKY 10x MULTIPLIER!!!");
+          alert("LUCKY 10x MULTIPLIER!!!");
           current *= 10;
         } else {
           current *= 2;
-          print("Your money DOUBLED to $" + current);
+          alert("You WON! Money doubled.");
         }
         chance = Math.max(5.0, chance - 1.0);
       } else {
-        print("You LOST the roll. Hand money gone!");
         current = 0;
         chance = Math.min(95.0, chance + 0.5);
+        alert("You LOST! Money gone.");
+      }
+
+      accrueInterest();
+      updateStatus();
+    }
+
+    function deposit(amount) {
+      if (current >= amount) {
+        current -= amount;
+        bank += amount;
+        updateStatus();
+      } else {
+        alert("Not enough in hand to deposit.");
+      }
+    }
+
+    function withdraw(amount) {
+      if (bank >= amount) {
+        bank -= amount;
+        current += amount;
+        updateStatus();
+      } else {
+        alert("Not enough in bank to withdraw.");
       }
     }
 
     function invest(type) {
-      if (type === 'gold' && bank >= 50) {
-        bank -= 50;
-        gold++;
-        print("Bought 1 gold stock.");
-      } else if (type === 'diamonds' && bank >= 200) {
-        bank -= 200;
-        diamonds++;
-        print("Bought a diamond.");
-      } else if (type === 'car' && bank >= 500) {
-        bank -= 500;
-        car++;
-        print("Bought a car.");
-      } else if (type === 'house' && bank >= 1000) {
-        bank -= 1000;
-        house++;
-        print("Bought a house.");
-      } else {
-        print("Not enough money in bank for " + type);
+      let prices = { gold: 50, diamonds: 200, car: 500, house: 1000 };
+      if (bank < prices[type]) {
+        alert("Not enough in bank to buy " + type);
+        return;
       }
+
+      bank -= prices[type];
+      if (type === 'gold') gold++;
+      if (type === 'diamonds') diamonds++;
+      if (type === 'car') car++;
+      if (type === 'house') house++;
+      accrueInterest();
+      updateStatus();
     }
 
     function accrueInterest() {
       let interest = Math.floor(bank * 0.02);
       bank += interest;
-      print("Bank earned $" + interest + " interest.");
     }
 
-    function status() {
-      print("STATUS REPORT:\n  Hand: $" + current + "\n  Bank: $" + bank +
-        "\n  Win chance: " + chance.toFixed(1) + "%" +
-        "\n  Gold: " + gold + "\n  Diamonds: " + diamonds +
-        "\n  Cars: " + car + "\n  Houses: " + house);
+    function resetGame() {
+      current = 100;
+      bank = 0;
+      chance = 60.0;
+      gold = diamonds = car = house = 0;
+      updateStatus();
     }
 
-    input.addEventListener('keydown', function(e) {
-      if (e.key === 'Enter') {
-        let cmd = input.value.trim().split(' ');
-        input.value = '';
-        switch (cmd[0]) {
-          case '/help':
-            print("Commands:\n  /roll - Roll to try your luck ($10)\n  /bank x - Deposit x\n  /take x - Withdraw x\n  /invest [gold|diamonds|car|house]\n  /status - Show status\n  /exit - Reset game");
-            break;
-          case '/roll':
-            roll(); accrueInterest(); break;
-          case '/bank':
-            let bAmt = parseInt(cmd[1]);
-            if (bAmt > current) print("Not enough in hand.");
-            else { current -= bAmt; bank += bAmt; print("Deposited $" + bAmt); }
-            break;
-          case '/take':
-            let tAmt = parseInt(cmd[1]);
-            if (tAmt > bank) print("Not enough in bank.");
-            else { bank -= tAmt; current += tAmt; print("Took $" + tAmt); }
-            break;
-          case '/invest':
-            invest(cmd[1]); accrueInterest(); break;
-          case '/status':
-            status(); break;
-          case '/exit':
-            current = 100; bank = 0; chance = 60.0; gold = diamonds = car = house = 0;
-            print("Game reset."); break;
-          default:
-            print("Unknown command. Type /help.");
-        }
-      }
-    });
-
-    startGame();
+    updateStatus();
   </script>
 </body>
 </html>
